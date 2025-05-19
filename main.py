@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import date, timedelta
 
 # --- 페이지 설정 ---
-st.set_page_config(layout="centered", page_title="날짜별 예약 시스템") # 페이지 제목 추가
+st.set_page_config(layout="centered", page_title="녹색어미니 활동 예약 시스템") # 페이지 제목 추가
 
 # --- 앱 제목 ---
 st.title("🗓️ 날짜별 예약 시스템")
