@@ -1,66 +1,73 @@
 import streamlit as st
 from datetime import date, timedelta
 
-# 앱 제목 설정
-st.title("🗓️ 날짜별 예약 시스템")
+# --- 페이지 설정 ---
+# 'centered' 레이아웃이 모바일 환경에 더 적합할 수 있습니다. (기본값이기도 함)
+# st.set_page_config(layout="centered") # 명시적으로 설정하거나 기본값을 사용
 
-# 예약 기간 설정
+# --- 앱 제목 ---
+st.title("🗓️ 녹색어머니 활동 날짜별 예약 시스템")
+
+# --- 예약 기간 설정 ---
 start_date = date(2025, 5, 26)
-# 사용자가 "23일"이라고 언급한 부분을 우선 5일로 가정 (월~금)
-# 만약 26일부터 23일간을 의미했다면 end_date = start_date + timedelta(days=22) 로 변경
-num_days_to_show = 5
+num_days_to_show = 5 # 5월 26일 ~ 5월 30일
 date_range = [start_date + timedelta(days=i) for i in range(num_days_to_show)]
 
-# 세션 상태 초기화 (예약 데이터 저장)
+# --- 세션 상태 초기화 ---
 if 'reservations' not in st.session_state:
     st.session_state.reservations = {day.isoformat(): 0 for day in date_range}
-if 'user_reservations' not in st.session_state:
-    st.session_state.user_reservations = {} # 사용자별 예약 정보를 저장 (선택적 확장 기능)
 
+# --- 예약 가능 날짜 및 예약 인터페이스 ---
 st.header("📅 예약 가능 날짜")
 st.write(f"{start_date.strftime('%Y년 %m월 %d일')}부터 {date_range[-1].strftime('%Y년 %m월 %d일')}까지 예약 가능합니다.")
 st.write("각 날짜별 최대 예약 인원은 3명입니다.")
+st.markdown("---") # 구분선
 
-# 예약 섹션
+# "표" 형태로 각 날짜별 예약 정보 표시
+# 각 날짜가 표의 한 행(row)처럼 표시됩니다.
 for day in date_range:
     day_str = day.isoformat()
     current_reservations = st.session_state.reservations.get(day_str, 0)
 
-    col1, col2, col3 = st.columns([2,1,2])
+    # 모바일에서는 이 컬럼들이 세로로 쌓입니다.
+    # 비율을 조정하여 모바일에서의 가독성을 고려할 수 있습니다.
+    col1, col2, col3 = st.columns([2, 1.5, 1.5]) # 날짜, 현황, 버튼/상태
 
     with col1:
-        st.subheader(f"{day.strftime('%Y년 %m월 %d일 (%a)')}") # 요일도 함께 표시
+        st.markdown(f"**{day.strftime('%Y-%m-%d (%a)')}**") # 날짜 및 요일 (굵게)
 
     with col2:
-        st.write(f"예약 현황: {current_reservations} / 3 명")
+        st.write(f"예약: {current_reservations} / 3 명")
 
     with col3:
         if current_reservations < 3:
-            if st.button(f"{day.strftime('%m월 %d일')} 예약하기", key=f"book_{day_str}"):
+            if st.button(f"예약하기", key=f"book_{day_str}", use_container_width=True): # 버튼 너비 조정
                 st.session_state.reservations[day_str] += 1
-                # 간단한 예약자 정보 입력 (선택 사항)
-                # user_name = st.text_input(f"{day_str} 예약자 이름", key=f"user_{day_str}_name_temp") # 실제 사용 시에는 다른 방식으로 처리 필요
-                st.success(f"{day.strftime('%Y년 %m월 %d일')}에 예약되었습니다! 현재 예약: {st.session_state.reservations[day_str]}명")
-                st.rerun() # 예약 후 화면을 새로고침하여 상태를 즉시 반영
+                st.success(f"{day.strftime('%Y-%m-%d')} 예약 완료! (현재: {st.session_state.reservations[day_str]}명)")
+                # st.experimental_rerun() # Streamlit 1.18.0 이전 버전
+                st.rerun() # 변경사항 즉시 반영
         else:
             st.error("예약 마감")
+    st.markdown("---") # 각 날짜 항목 사이에 구분선 추가
 
-st.divider() # 구분선
-
-# 현재 예약 현황 확인
+# --- 전체 예약 현황 확인 ---
 st.header("📊 전체 예약 현황")
-if any(st.session_state.reservations.values()): # 하나라도 예약이 있다면
+if any(st.session_state.reservations.values()):
     data = []
-    for day_iso, count in st.session_state.reservations.items():
+    for day_iso, count in sorted(st.session_state.reservations.items()): # 날짜순 정렬
         day_obj = date.fromisoformat(day_iso)
-        data.append({"날짜": day_obj.strftime('%Y년 %m월 %d일 (%a)'), "예약 인원": f"{count} 명"})
+        status = "예약 가능" if count < 3 else "예약 마감"
+        data.append({
+            "날짜": day_obj.strftime('%Y-%m-%d (%a)'),
+            "예약 인원": f"{count} 명",
+            "상태": status
+        })
     
-    st.table(data)
+    st.table(data) # 이 부분은 실제 표로 깔끔하게 현황을 보여줍니다.
 else:
     st.info("현재 예약된 내역이 없습니다.")
 
-# 초기화 버튼 (테스트용)
+# --- 예약 초기화 버튼 (테스트용) ---
 if st.sidebar.button("모든 예약 초기화 (테스트용)"):
     st.session_state.reservations = {day.isoformat(): 0 for day in date_range}
-    st.session_state.user_reservations = {}
     st.rerun()
